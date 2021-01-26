@@ -9,6 +9,7 @@ import android.content.Intent
 import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.provider.Settings
 import android.os.Bundle
@@ -24,6 +25,7 @@ import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
+import kotlinx.android.synthetic.main.activity_main.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -143,8 +145,11 @@ class MainActivity : AppCompatActivity() {
                 override fun onResponse(call: Call<WeatherResponse>, response: Response<WeatherResponse>) {
                     if(response.isSuccessful){
                         val weatherList: WeatherResponse? = response.body()
-                        Log.i("Response Result:","$weatherList")
                         hideProgressDialog()
+                        if(weatherList != null)
+                            setupUI(weatherList)
+                        Log.i("Response Result:","$weatherList")
+
                     }else{
                         val responseCode = response.code()
                         when(responseCode){
@@ -179,6 +184,27 @@ class MainActivity : AppCompatActivity() {
             mProgressDialog!!.dismiss()
     }
 
+    private fun setupUI(weatherList: WeatherResponse){
+        for(i in weatherList.weather.indices){
+            Log.i("Weather Name",weatherList.weather.toString())
+            //visit https://openweathermap.org/weather-conditions to see list of weather conditions codes
+            textViewMain.text = weatherList.weather[i].main
+            textViewMainDescription.text = weatherList.weather[i].description
 
+            val value = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                getUnit(application.resources.configuration.locales[0].country.toString())
+            }else{
+                getUnit(application.resources.configuration.locale.country.toString())
+            }
+            textViewTemp.text = weatherList.main.temp.toString() + value
+        }
+    }
 
+    private fun getUnit(localValue : String): String? {
+        var value = "°C"
+        if("US" == localValue || "LR" == localValue || "MM" == localValue){
+            value = "°F"
+        }
+        return value
+    }
 }
