@@ -31,6 +31,8 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -197,6 +199,17 @@ class MainActivity : AppCompatActivity() {
                 getUnit(application.resources.configuration.locale.country.toString())
             }
             textViewTemp.text = weatherList.main.temp.toString() + value
+
+            textViewSunriseTime.text = unixTime(weatherList.sys.sunrise)
+            textViewSunsetTime.text = unixTime(weatherList.sys.sunset)
+
+            textViewHumidity.text = weatherList.main.humidity.toString() + " per cent"
+            textViewMin.text = weatherList.main.temp_min.toString() + " min"
+            textViewMax.text = weatherList.main.temp_max.toString() + " max"
+            textViewSpeed.text = weatherList.wind.speed.toString()
+            textViewName.text = weatherList.name
+            textViewCountry.text = weatherList.sys.country
+
         }
     }
 
@@ -206,5 +219,12 @@ class MainActivity : AppCompatActivity() {
             value = "°F"
         }
         return value
+    }
+
+    private fun unixTime(timex : Long): String?{
+        val date = Date(timex * 1000L)
+        val sdf = SimpleDateFormat("HH:mm", Locale.UK)
+        sdf.timeZone = TimeZone.getDefault()
+        return sdf.format(date)
     }
 }
