@@ -210,7 +210,28 @@ class MainActivity : AppCompatActivity() {
             textViewName.text = weatherList.name
             textViewCountry.text = weatherList.sys.country
 
+            setIcon(weatherList,i)
         }
+    }
+
+    private fun setIcon(weatherList: WeatherResponse,i:Int) {
+        when (weatherList.weather[i].icon) {
+            "01d" -> imageViewMain.setImageResource(R.drawable.sunny)
+            "02d" -> imageViewMain.setImageResource(R.drawable.cloud)
+            "03d" -> imageViewMain.setImageResource(R.drawable.cloud)
+            "04d" -> imageViewMain.setImageResource(R.drawable.cloud)
+            "04n" -> imageViewMain.setImageResource(R.drawable.cloud)
+            "10d" -> imageViewMain.setImageResource(R.drawable.rain)
+            "11d" -> imageViewMain.setImageResource(R.drawable.storm)
+            "13d" -> imageViewMain.setImageResource(R.drawable.snowflake)
+            "01n" -> imageViewMain.setImageResource(R.drawable.cloud)
+            "02n" -> imageViewMain.setImageResource(R.drawable.cloud)
+            "03n" -> imageViewMain.setImageResource(R.drawable.cloud)
+            "10n" -> imageViewMain.setImageResource(R.drawable.cloud)
+            "11n" -> imageViewMain.setImageResource(R.drawable.rain)
+            "13n" -> imageViewMain.setImageResource(R.drawable.snowflake)
+        }
+
     }
 
     private fun getUnit(localValue : String): String? {
