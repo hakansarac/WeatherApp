@@ -6,6 +6,7 @@ import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
@@ -20,6 +21,7 @@ import android.view.MenuItem
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.google.android.gms.location.*
+import com.google.gson.Gson
 import com.hakansarac.weatherapp.models.WeatherResponse
 import com.hakansarac.weatherapp.network.WeatherService
 import com.karumi.dexter.Dexter
@@ -40,12 +42,16 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
     private var mProgressDialog: Dialog? = null
+    private lateinit var mSharedPreferences : SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
+        mSharedPreferences = getSharedPreferences(Constants.PREFERENCE_NAME,Context.MODE_PRIVATE)
+        setupUI()
 
         if (!isLocationEnabled()) {
             Toast.makeText(
@@ -150,8 +156,13 @@ class MainActivity : AppCompatActivity() {
                     if(response.isSuccessful){
                         val weatherList: WeatherResponse? = response.body()
                         hideProgressDialog()
-                        if(weatherList != null)
-                            setupUI(weatherList)
+
+                        val weatherResponseJsonString = Gson().toJson(weatherList) //return all data list as String
+                        val editor = mSharedPreferences.edit()
+                        editor.putString(Constants.WEATHER_RESPONSE_DATA,weatherResponseJsonString)
+                        editor.apply()
+
+                        setupUI()
                         Log.i("Response Result:","$weatherList")
 
                     }else{
@@ -188,32 +199,39 @@ class MainActivity : AppCompatActivity() {
             mProgressDialog!!.dismiss()
     }
 
-    private fun setupUI(weatherList: WeatherResponse){
-        for(i in weatherList.weather.indices){
-            Log.i("Weather Name",weatherList.weather.toString())
-            //visit https://openweathermap.org/weather-conditions to see list of weather conditions codes
-            textViewMain.text = weatherList.weather[i].main
-            textViewMainDescription.text = weatherList.weather[i].description
+    private fun setupUI(){
+        val weatherResponseJsonString = mSharedPreferences.getString(Constants.WEATHER_RESPONSE_DATA,"")
 
-            val value = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                getUnit(application.resources.configuration.locales[0].country.toString())
-            }else{
-                getUnit(application.resources.configuration.locale.country.toString())
+        if(!weatherResponseJsonString.isNullOrEmpty()){
+            val weatherList = Gson().fromJson(weatherResponseJsonString,WeatherResponse::class.java)
+
+            for(i in weatherList.weather.indices){
+                Log.i("Weather Name",weatherList.weather.toString())
+                //visit https://openweathermap.org/weather-conditions to see list of weather conditions codes
+                textViewMain.text = weatherList.weather[i].main
+                textViewMainDescription.text = weatherList.weather[i].description
+
+                val value = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    getUnit(application.resources.configuration.locales[0].country.toString())
+                }else{
+                    getUnit(application.resources.configuration.locale.country.toString())
+                }
+                textViewTemp.text = weatherList.main.temp.toString() + value
+
+                textViewSunriseTime.text = unixTime(weatherList.sys.sunrise)
+                textViewSunsetTime.text = unixTime(weatherList.sys.sunset)
+
+                textViewHumidity.text = weatherList.main.humidity.toString() + " per cent"
+                textViewMin.text = weatherList.main.temp_min.toString() + " min"
+                textViewMax.text = weatherList.main.temp_max.toString() + " max"
+                textViewSpeed.text = weatherList.wind.speed.toString()
+                textViewName.text = weatherList.name
+                textViewCountry.text = weatherList.sys.country
+
+                setIcon(weatherList,i)
             }
-            textViewTemp.text = weatherList.main.temp.toString() + value
-
-            textViewSunriseTime.text = unixTime(weatherList.sys.sunrise)
-            textViewSunsetTime.text = unixTime(weatherList.sys.sunset)
-
-            textViewHumidity.text = weatherList.main.humidity.toString() + " per cent"
-            textViewMin.text = weatherList.main.temp_min.toString() + " min"
-            textViewMax.text = weatherList.main.temp_max.toString() + " max"
-            textViewSpeed.text = weatherList.wind.speed.toString()
-            textViewName.text = weatherList.name
-            textViewCountry.text = weatherList.sys.country
-
-            setIcon(weatherList,i)
         }
+
     }
 
     private fun setIcon(weatherList: WeatherResponse,i:Int) {
