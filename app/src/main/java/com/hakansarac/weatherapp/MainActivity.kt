@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
     private var mProgressDialog: Dialog? = null
-    private lateinit var mSharedPreferences : SharedPreferences
+    private lateinit var mSharedPreferences : SharedPreferences     //to keep last variables to show at opening when cannot get up to date data
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,9 +50,15 @@ class MainActivity : AppCompatActivity() {
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        mSharedPreferences = getSharedPreferences(Constants.PREFERENCE_NAME,Context.MODE_PRIVATE)
-        setupUI()
+        mSharedPreferences = getSharedPreferences(Constants.PREFERENCE_NAME,Context.MODE_PRIVATE)   //if it is private then the values can only be obtained by this application
+        setupUI()   //setup UI with data remaining from previous use
 
+        /**
+         * if user's location information is disabled, take user to location source settings
+         * else with third party code(dexter) control the permissions
+         * if permissions granted then request location data
+         * if any permission is denied then ask to give permission with a Toast message
+         */
         if (!isLocationEnabled()) {
             Toast.makeText(
                 this,
@@ -91,14 +97,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * check the location accessibility
+     */
     private fun isLocationEnabled(): Boolean {
         val locationManager: LocationManager =
             getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
-            LocationManager.NETWORK_PROVIDER
-        )
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
+    /**
+     * If user want to do something but he is has turned off permissions for this feature,
+     * then show an alert dialog to give this information and take user to application settings
+     */
     private fun showRationalDialogForPermissions() {
         AlertDialog.Builder(this)
                 .setMessage("It Looks like you have turned off permissions required for this feature. It can be enabled under Application Settings")
@@ -119,6 +130,9 @@ class MainActivity : AppCompatActivity() {
                 }.show()
     }
 
+    /**
+     * getting location data
+     */
     @SuppressLint("MissingPermission")
     private fun requestLocationData() {
         val mLocationRequest = LocationRequest()
@@ -142,6 +156,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /*
+      third party retrofit: API interfaces are turned into callable objects
+      third party gson: Gson is a Java library that can be used to convert Java Objects into their JSON representation.
+                        It can also be used to convert a JSON string to an equivalent Java object.
+     */
     private fun getLocationWeatherDetails(latitude:Double,longitude:Double){
         if(Constants.isNetworkAvailable(this)){
             val retrofit : Retrofit = Retrofit.Builder().baseUrl(Constants.BASE_URL).addConverterFactory(GsonConverterFactory.create()).build()
@@ -150,7 +169,7 @@ class MainActivity : AppCompatActivity() {
             //TODO: APP_ID must be your own OpenWeatherMap api key
             val listCall : Call<WeatherResponse> = service.getWeather(latitude,longitude,Constants.METRIC_UNIT,Constants.APP_ID)
 
-            showCustomProgressDialog()
+            showCustomProgressDialog()  //
             listCall.enqueue(object: Callback<WeatherResponse>{
                 override fun onResponse(call: Call<WeatherResponse>, response: Response<WeatherResponse>) {
                     if(response.isSuccessful){
@@ -211,6 +230,7 @@ class MainActivity : AppCompatActivity() {
                 textViewMain.text = weatherList.weather[i].main
                 textViewMainDescription.text = weatherList.weather[i].description
 
+                //get the unit type according to country
                 val value = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     getUnit(application.resources.configuration.locales[0].country.toString())
                 }else{
@@ -254,6 +274,9 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    /**
+     * getting type of unit according to country
+     */
     private fun getUnit(localValue : String): String? {
         var value = "°C"
         if("US" == localValue || "LR" == localValue || "MM" == localValue){
@@ -262,6 +285,9 @@ class MainActivity : AppCompatActivity() {
         return value
     }
 
+    /**
+     * change unix epoch time to human-readable date
+     */
     private fun unixTime(timex : Long): String?{
         val date = Date(timex * 1000L)
         val sdf = SimpleDateFormat("HH:mm", Locale.UK)
@@ -274,6 +300,9 @@ class MainActivity : AppCompatActivity() {
         return super.onCreateOptionsMenu(menu)
     }
 
+    /**
+     * setting the options items
+     */
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when(item.itemId){
             R.id.action_refresh ->{
