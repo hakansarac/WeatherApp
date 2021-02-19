@@ -38,9 +38,17 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.*
 
+// OpenWeather Link : https://openweathermap.org/api
+/**
+ * The useful link or some more explanation for this app you can checkout this link :
+ * https://medium.com/@sasude9/basic-android-weather-app-6a7c0855caf4
+ */
+
 class MainActivity : AppCompatActivity() {
 
+    // A fused location client variable which is further user to get the user's current location
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
+    // A global variable for Progress Dialog
     private var mProgressDialog: Dialog? = null
     private lateinit var mSharedPreferences : SharedPreferences     //to keep last variables to show at opening when cannot get up to date data
 
@@ -51,6 +59,9 @@ class MainActivity : AppCompatActivity() {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         mSharedPreferences = getSharedPreferences(Constants.PREFERENCE_NAME,Context.MODE_PRIVATE)   //if it is private then the values can only be obtained by this application
+        //  Call the UI method to populate the data in
+        //  the UI which are already stored in sharedPreferences earlier.
+        //  At first run it will be blank.
         setupUI()   //setup UI with data remaining from previous use
 
         /**
@@ -65,6 +76,7 @@ class MainActivity : AppCompatActivity() {
                 "Your location provider is turned off. Please turn it on.",
                 Toast.LENGTH_SHORT
             ).show()
+            // This will redirect you to settings from where you need to turn on the location provider.
             val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
             startActivity(intent)
         }else {
@@ -97,7 +109,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     /**
+     * A function which is used to verify that the location or GPS is enable or not of the user's device.
      * check the location accessibility
      */
     private fun isLocationEnabled(): Boolean {
@@ -107,6 +121,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * A function used to show the alert dialog when the permissions are denied and need to allow it from settings app info.
      * If user want to do something but he is has turned off permissions for this feature,
      * then show an alert dialog to give this information and take user to application settings
      */
@@ -131,7 +146,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * getting location data
+     * A function to request the current location. Using the fused location provider client.
      */
     @SuppressLint("MissingPermission")
     private fun requestLocationData() {
@@ -144,6 +159,9 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /**
+     * A location callback object of fused location provider client where we will get the current location details.
+     */
     private val mLocationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             val mLastLocation: Location = locationResult.lastLocation
@@ -156,27 +174,44 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /*
-      third party retrofit: API interfaces are turned into callable objects
-      third party gson: Gson is a Java library that can be used to convert Java Objects into their JSON representation.
-                        It can also be used to convert a JSON string to an equivalent Java object.
+    /**
+     * Function is used to get the weather details of the current location based on the latitude longitude
+     * third party retrofit: API interfaces are turned into callable objects
+     * third party gson: Gson is a Java library that can be used to convert Java Objects into their JSON representation.
+     *                   It can also be used to convert a JSON string to an equivalent Java object.
      */
     private fun getLocationWeatherDetails(latitude:Double,longitude:Double){
         if(Constants.isNetworkAvailable(this)){
+            /**
+             * Add the built-in converter factory first. This prevents overriding its
+             * behavior but also ensures correct behavior when using converters that consume all types.
+             */
             val retrofit : Retrofit = Retrofit.Builder().baseUrl(Constants.BASE_URL).addConverterFactory(GsonConverterFactory.create()).build()
+            /**
+             * Here we map the service interface in which we declares the end point and the API type
+             *i.e GET, POST and so on along with the request parameter which are required.
+             */
             val service : WeatherService = retrofit.create(WeatherService::class.java)
 
+            /**
+             * An invocation of a Retrofit method that sends a request to a web-server and returns a response.
+             * Here we pass the required param in the service
+             */
             //TODO: APP_ID must be your own OpenWeatherMap api key
             val listCall : Call<WeatherResponse> = service.getWeather(latitude,longitude,Constants.METRIC_UNIT,Constants.APP_ID)
 
             showCustomProgressDialog()  //
             listCall.enqueue(object: Callback<WeatherResponse>{
                 override fun onResponse(call: Call<WeatherResponse>, response: Response<WeatherResponse>) {
+                    // Check weather the response is success or not.
                     if(response.isSuccessful){
+                        /** The de-serialized response body of a successful response. */
                         val weatherList: WeatherResponse? = response.body()
                         hideProgressDialog()
 
+                        // Here we have converted the model class into Json String to store it in the SharedPreferences.
                         val weatherResponseJsonString = Gson().toJson(weatherList) //return all data list as String
+                        // Save the converted string to shared preferences
                         val editor = mSharedPreferences.edit()
                         editor.putString(Constants.WEATHER_RESPONSE_DATA,weatherResponseJsonString)
                         editor.apply()
@@ -185,6 +220,7 @@ class MainActivity : AppCompatActivity() {
                         Log.i("Response Result:","$weatherList")
 
                     }else{
+                        // If the response is not success then we check the response code.
                         val responseCode = response.code()
                         when(responseCode){
                             400 -> Log.e("Error 400","Bad Connection")
@@ -207,23 +243,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Method is used to show the Custom Progress Dialog.
+     */
     private fun showCustomProgressDialog(){
         mProgressDialog = Dialog(this)
         mProgressDialog!!.setContentView(R.layout.dialog_custom_progress)
         mProgressDialog!!.show()
     }
 
+    /**
+     * This function is used to dismiss the progress dialog if it is visible to user.
+     */
     private fun hideProgressDialog(){
         if(mProgressDialog!=null)
             mProgressDialog!!.dismiss()
     }
 
+    /**
+     * Function is used to set the result in the UI elements.
+     */
     private fun setupUI(){
+        //  Here we get the stored response from
+        //  SharedPreferences and again convert back to data object
+        //  to populate the data in the UI.
+
+        // Here we have got the latest stored response from the SharedPreference and converted back to the data model object.
         val weatherResponseJsonString = mSharedPreferences.getString(Constants.WEATHER_RESPONSE_DATA,"")
 
         if(!weatherResponseJsonString.isNullOrEmpty()){
             val weatherList = Gson().fromJson(weatherResponseJsonString,WeatherResponse::class.java)
 
+            // For loop to get the required data. And all are populated in the UI.
             for(i in weatherList.weather.indices){
                 Log.i("Weather Name",weatherList.weather.toString())
                 //visit https://openweathermap.org/weather-conditions to see list of weather conditions codes
